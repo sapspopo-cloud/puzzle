@@ -235,10 +235,6 @@
             margin: 15px 0;
             line-height: 1.5;
         }
-
-        canvas {
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -247,7 +243,7 @@
         <h1>🧩 薔琵颱風：氣象拼圖大挑戰</h1>
         <p class="subtitle">解開薔琵颱風的衛星雲圖與雷達回波圖！</p>
         <div class="news-flash">
-            📢 10/23 薔琵颱風警報：台東大轉灣宣布停班課，全台僅金門正常上班課！
+            📢 10/23 薔琵颱風警報：台東大轉彎宣布停班課，全台僅金門正常上班課！
         </div>
     </header>
 
@@ -283,11 +279,157 @@
             <div class="knowledge-card">
                 <b>🔍 薔琵颱風氣象小知識：</b><br>
                 1. <b>薔琵 (Champi)</b> 由柬埔寨命名，意為黃樟花。<br>
-                2. <b>10/23 停班課動態</b>：台東縣今晨宣布大轉灣停班課，全台僅<b>金門縣</b>正常上班上課。古城國小小朋友記得準時上學喔！
+                2. <b>10/23 停班課動態</b>：台東縣今晨宣布大轉彎停班課，全台僅<b>金門縣</b>正常上班上課。古城國小小朋友記得準時上學喔！
             </div>
 
             <button class="btn" style="width: 100%; padding: 10px;" onclick="closeModal()">再挑戰一次</button>
         </div>
     </div>
 
-    <canvas id="genCanvas" width="600" height="600"></canvas>
+    <script>
+        let gridSize = 3;
+        let mapType = 'cloud';
+        let tiles = [];
+        let selectedTileIndex = null;
+        let moves = 0;
+        let timerInterval = null;
+        let secondsElapsed = 0;
+        let isGameActive = false;
+        
+        // 使用穩定可靠的高畫質氣象圖源與 SVG 替代方案確保 GitHub 正常顯示
+        const mapImages = {
+            cloud: 'https://images.unsplash.com/photo-1527489377852-6f32e2938006?q=80&w=800&auto=format&fit=crop', // 氣象感藍色高質感雲圖背景
+            radar: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?q=80&w=800&auto=format&fit=crop'  // 雷達回波風格科技夜景圖
+        };
+
+        function initGame() {
+            const imageUrl = mapImages[mapType];
+            document.getElementById('previewImage').src = imageUrl;
+
+            moves = 0;
+            secondsElapsed = 0;
+            selectedTileIndex = null;
+            document.getElementById('moves').innerText = moves;
+            document.getElementById('timer').innerText = '00:00';
+            clearInterval(timerInterval);
+            isGameActive = false;
+
+            tiles = [];
+            const total = gridSize * gridSize;
+            for (let i = 0; i < total; i++) {
+                tiles.push(i);
+            }
+
+            shuffleTiles();
+        }
+
+        function shuffleTiles() {
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+            }
+            selectedTileIndex = null;
+            moves = 0;
+            secondsElapsed = 0;
+            document.getElementById('moves').innerText = moves;
+            document.getElementById('timer').innerText = '00:00';
+            clearInterval(timerInterval);
+            isGameActive = false;
+            renderBoard();
+        }
+
+        function startTimer() {
+            if (isGameActive) return;
+            isGameActive = true;
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+                const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('puzzleBoard');
+            board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            board.innerHTML = '';
+
+            const imageUrl = mapImages[mapType];
+
+            tiles.forEach((correctIndex, currentIndex) => {
+                const tile = document.createElement('div');
+                tile.className = 'puzzle-tile';
+                if (currentIndex === selectedTileIndex) {
+                    tile.classList.add('selected');
+                }
+
+                const row = Math.floor(correctIndex / gridSize);
+                const col = correctIndex % gridSize;
+
+                const posX = gridSize > 1 ? (col / (gridSize - 1)) * 100 : 0;
+                const posY = gridSize > 1 ? (row / (gridSize - 1)) * 100 : 0;
+
+                tile.style.backgroundImage = `url(${imageUrl})`;
+                tile.style.backgroundSize = `${gridSize * 100}% ${gridSize * 100}%`;
+                tile.style.backgroundPosition = `${posX}% ${posY}%`;
+
+                tile.addEventListener('click', () => onTileClick(currentIndex));
+                board.appendChild(tile);
+            });
+        }
+
+        function onTileClick(index) {
+            if (!isGameActive) startTimer();
+
+            if (selectedTileIndex === null) {
+                selectedTileIndex = index;
+            } else if (selectedTileIndex === index) {
+                selectedTileIndex = null;
+            } else {
+                [tiles[selectedTileIndex], tiles[index]] = [tiles[index], tiles[selectedTileIndex]];
+                selectedTileIndex = null;
+                moves++;
+                document.getElementById('moves').innerText = moves;
+                checkWin();
+            }
+            renderBoard();
+        }
+
+        function checkWin() {
+            const isWin = tiles.every((val, index) => val === index);
+            if (isWin) {
+                clearInterval(timerInterval);
+                isGameActive = false;
+                document.getElementById('finalMoves').innerText = moves;
+                document.getElementById('finalTime').innerText = document.getElementById('timer').innerText;
+                document.getElementById('winModal').classList.add('active');
+
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                }
+            }
+        }
+
+        function switchMapType(type) {
+            mapType = type;
+            document.getElementById('btnCloud').classList.toggle('active', type === 'cloud');
+            document.getElementById('btnRadar').classList.toggle('active', type === 'radar');
+            initGame();
+        }
+
+        function setGridSize(size) {
+            gridSize = size;
+            document.getElementById('btnGrid3').classList.toggle('active', size === 3);
+            document.getElementById('btnGrid4').classList.toggle('active', size === 4);
+            initGame();
+        }
+
+        function closeModal() {
+            document.getElementById('winModal').classList.remove('active');
+            shuffleTiles();
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>

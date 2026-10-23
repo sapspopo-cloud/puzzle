@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>薔琵颱風雲圖與雷達回波圖拼圖大挑戰</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0a1128;
+            --card-bg: #1c2541;
+            --accent-blue: #48cae4;
+            --accent-gold: #ffb703;
+            --success-green: #38b000;
+            --danger-red: #ff4d6d;
+            --text-light: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 12px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #90e0ef;
+            margin-bottom: 8px;
+        }
+
+        .news-flash {
+            background: rgba(255, 183, 3, 0.15);
+            border: 1px solid var(--accent-gold);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            color: #ffe6a7;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .control-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            background: var(--card-bg);
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--accent-blue);
+            color: var(--text-light);
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--accent-blue);
+            color: var(--bg-dark);
+        }
+
+        .btn.active {
+            background: var(--accent-blue);
+            color: var(--bg-dark);
+        }
+
+        .stat-badge {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent-gold);
+            font-weight: bold;
+        }
+
+        .game-layout {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .instruction-box {
+            background: rgba(72, 202, 228, 0.1);
+            border: 1px dashed var(--accent-blue);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: var(--accent-blue);
+            text-align: center;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .puzzle-board {
+            display: grid;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px;
+            border-radius: 12px;
+            border: 2px solid var(--accent-blue);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            aspect-ratio: 1 / 1;
+        }
+
+        .puzzle-tile {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .puzzle-tile:hover {
+            transform: scale(0.97);
+            filter: brightness(1.1);
+        }
+
+        .puzzle-tile.selected {
+            border: 3px solid var(--accent-gold);
+            box-shadow: 0 0 12px var(--accent-gold);
+            transform: scale(0.95);
+            z-index: 2;
+        }
+
+        .preview-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+
+        .preview-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            object-fit: cover;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            padding: 20px;
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 2px solid var(--accent-blue);
+            border-radius: 16px;
+            padding: 25px;
+            max-width: 420px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .modal-card h2 {
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+        }
+
+        .knowledge-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 4px solid var(--accent-blue);
+            padding: 10px;
+            text-align: left;
+            font-size: 0.85rem;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🧩 薔琵颱風：氣象拼圖大挑戰</h1>
+        <p class="subtitle">解開薔琵颱風的衛星雲圖與雷達回波圖！</p>
+        <div class="news-flash">
+            📢 10/23 薔琵颱風警報：台東大轉灣宣布停班課，全台僅金門正常上班課！
+        </div>
+    </header>
+
+    <div class="control-bar">
+        <button class="btn active" id="btnCloud" onclick="switchMapType('cloud')">紅外線衛星雲圖</button>
+        <button class="btn" id="btnRadar" onclick="switchMapType('radar')">雷達回波圖</button>
+        <button class="btn" id="btnGrid3" onclick="setGridSize(3)">3x3 (入門)</button>
+        <button class="btn" id="btnGrid4" onclick="setGridSize(4)">4x4 (進階)</button>
+        <button class="btn" onclick="shuffleTiles()">🔀 重置洗牌</button>
+        <div class="stat-badge">⏱️ <span id="timer">00:00</span></div>
+        <div class="stat-badge">🎯 步數：<span id="moves">0</span></div>
+    </div>
+
+    <main class="game-layout">
+        <div class="instruction-box">
+            💡 操作提示：點選二張圖，讓圖卡交換位置
+        </div>
+
+        <div class="puzzle-board" id="puzzleBoard"></div>
+
+        <div class="preview-box">
+            <span>完整對照圖：</span>
+            <img id="previewImage" class="preview-img" alt="對照圖">
+        </div>
+    </main>
+
+    <div class="modal" id="winModal">
+        <div class="modal-card">
+            <h2>🎉 恭喜拼圖成功！</h2>
+            <p>你順利拼出了薔琵颱風特寫圖！</p>
+            <p style="margin-top: 8px; font-size: 0.9rem;">總步數：<span id="finalMoves" style="color:var(--accent-gold); font-weight:bold;"></span> | 耗時：<span id="finalTime" style="color:var(--accent-gold); font-weight:bold;"></span></p>
+
+            <div class="knowledge-card">
+                <b>🔍 薔琵颱風氣象小知識：</b><br>
+                1. <b>薔琵 (Champi)</b> 由柬埔寨命名，意為黃樟花。<br>
+                2. <b>10/23 停班課動態</b>：台東縣今晨宣布大轉灣停班課，全台僅<b>金門縣</b>正常上班上課。古城國小小朋友記得準時上學喔！
+            </div>
+
+            <button class="btn" style="width: 100%; padding: 10px;" onclick="closeModal()">再挑戰一次</button>
+        </div>
+    </div>
+
+    <canvas id="genCanvas" width="600" height="600"></canvas>

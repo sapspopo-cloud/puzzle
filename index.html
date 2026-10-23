@@ -410,4 +410,132 @@
         function initGame() {
             generateDataImages();
             const imageUrl = mapImages[mapType];
-            document.getElementById
+            document.getElementById('previewImage').src = imageUrl;
+
+            moves = 0;
+            secondsElapsed = 0;
+            selectedTileIndex = null;
+            document.getElementById('moves').innerText = moves;
+            document.getElementById('timer').innerText = '00:00';
+            clearInterval(timerInterval);
+            isGameActive = false;
+
+            tiles = [];
+            const total = gridSize * gridSize;
+            for (let i = 0; i < total; i++) {
+                tiles.push(i);
+            }
+
+            shuffleTiles();
+        }
+
+        function shuffleTiles() {
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+            }
+            selectedTileIndex = null;
+            moves = 0;
+            secondsElapsed = 0;
+            document.getElementById('moves').innerText = moves;
+            document.getElementById('timer').innerText = '00:00';
+            clearInterval(timerInterval);
+            isGameActive = false;
+            renderBoard();
+        }
+
+        function startTimer() {
+            if (isGameActive) return;
+            isGameActive = true;
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+                const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('puzzleBoard');
+            board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            board.innerHTML = '';
+
+            const imageUrl = mapImages[mapType];
+
+            tiles.forEach((correctIndex, currentIndex) => {
+                const tile = document.createElement('div');
+                tile.className = 'puzzle-tile';
+                if (currentIndex === selectedTileIndex) {
+                    tile.classList.add('selected');
+                }
+
+                const row = Math.floor(correctIndex / gridSize);
+                const col = correctIndex % gridSize;
+
+                const posX = gridSize > 1 ? (col / (gridSize - 1)) * 100 : 0;
+                const posY = gridSize > 1 ? (row / (gridSize - 1)) * 100 : 0;
+
+                tile.style.backgroundImage = `url("${imageUrl}")`;
+                tile.style.backgroundSize = `${gridSize * 100}% ${gridSize * 100}%`;
+                tile.style.backgroundPosition = `${posX}% ${posY}%`;
+
+                tile.addEventListener('click', () => onTileClick(currentIndex));
+                board.appendChild(tile);
+            });
+        }
+
+        function onTileClick(index) {
+            if (!isGameActive) startTimer();
+
+            if (selectedTileIndex === null) {
+                selectedTileIndex = index;
+            } else if (selectedTileIndex === index) {
+                selectedTileIndex = null;
+            } else {
+                [tiles[selectedTileIndex], tiles[index]] = [tiles[index], tiles[selectedTileIndex]];
+                selectedTileIndex = null;
+                moves++;
+                document.getElementById('moves').innerText = moves;
+                checkWin();
+            }
+            renderBoard();
+        }
+
+        function checkWin() {
+            const isWin = tiles.every((val, index) => val === index);
+            if (isWin) {
+                clearInterval(timerInterval);
+                isGameActive = false;
+                document.getElementById('finalMoves').innerText = moves;
+                document.getElementById('finalTime').innerText = document.getElementById('timer').innerText;
+                document.getElementById('winModal').classList.add('active');
+
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                }
+            }
+        }
+
+        function switchMapType(type) {
+            mapType = type;
+            document.getElementById('btnCloud').classList.toggle('active', type === 'cloud');
+            document.getElementById('btnRadar').classList.toggle('active', type === 'radar');
+            initGame();
+        }
+
+        function setGridSize(size) {
+            gridSize = size;
+            document.getElementById('btnGrid3').classList.toggle('active', size === 3);
+            document.getElementById('btnGrid4').classList.toggle('active', size === 4);
+            initGame();
+        }
+
+        function closeModal() {
+            document.getElementById('winModal').classList.remove('active');
+            shuffleTiles();
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
